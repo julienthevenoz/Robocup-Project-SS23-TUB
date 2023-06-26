@@ -6,6 +6,9 @@
 import sys
 import time
 
+import math
+
+
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
@@ -33,6 +36,9 @@ class SoundLocaterModule(ALModule):
 
         # Create a proxy to ALTextToSpeech for later use
         self.tts = ALProxy("ALTextToSpeech")
+
+        # instantiate navigation
+        self.navigation = ALProxy("ALNavigation")
 
         # Subscribe to the FaceDetected event:
         global memory
@@ -70,6 +76,20 @@ class SoundLocaterModule(ALModule):
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated",
                                 "SoundLocater",
                                 "onSoundLocated")
+
+        move_to_direction(azimuth)
+
+
+    def move_to_direction(azimuth):
+    """ Moves into the direction of an angle """
+
+    x = 0.5 * math.cos(azimuth)
+    y = 0.5 * math.sin(azimuth)
+    self.navigation.navigateTo(x,y)
+
+
+
+
 
 
 def main():
