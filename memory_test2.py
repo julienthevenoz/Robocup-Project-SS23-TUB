@@ -49,6 +49,10 @@ class SoundLocaterModule(ALModule):
         memory.insertData("hearingStartTime", 0)
         memory.insertData("hearingLastTime", 0)
 
+    self.nbSoundsHeard = 0
+    self.hearingStartTime = 0
+    self.hearingLastTime = 0
+
     #i changed this but is it correct ?
     def onSoundLocated(self, *_args):
         """ This will be called each time a face is

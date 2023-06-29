@@ -56,7 +56,8 @@ class SoundLocaterModule(ALModule):
         memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated",
                                   "SoundLocater")
         self.tts.say("Sound detected")
- 
+        print("sound located")
+         
 
         # Subscribe again to the event
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated",

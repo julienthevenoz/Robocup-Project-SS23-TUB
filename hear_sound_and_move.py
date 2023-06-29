@@ -33,6 +33,7 @@ class SoundLocaterModule(ALModule):
 
         # Create a proxy to ALTextToSpeech for later use
         self.tts = ALProxy("ALTextToSpeech")
+        self.tts.say("JUlien")
 
         # Subscribe to the FaceDetected event:
         global memory
