@@ -33,6 +33,7 @@ class SoundLocaterModule(ALModule):
 
         # Create a proxy to ALTextToSpeech for later use
         self.tts = ALProxy("ALTextToSpeech")
+        self.tts.say("start")
 
         # Subscribe to the FaceDetected event:
         global memory
@@ -42,6 +43,15 @@ class SoundLocaterModule(ALModule):
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated",
                                 "SoundLocater",
                                 "onSoundLocated")
+
+        #initialing memory variables for frequency
+        memory.insertData("nbSoundsHeard", 0)
+        memory.insertData("hearingStartTime", 0)
+        memory.insertData("hearingLastTime", 0)
+
+    self.nbSoundsHeard = 0
+    self.hearingStartTime = 0
+    self.hearingLastTime = 0
 
     #i changed this but is it correct ?
     def onSoundLocated(self, *_args):
@@ -56,8 +66,37 @@ class SoundLocaterModule(ALModule):
         memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated",
                                   "SoundLocater")
         self.tts.say("Sound detected")
-        print("sound located")
-         
+
+        #we heard one more sound
+        nbSoundsHeard = memory.getData("nbSoundsHeard")
+        nbSoundsHeard += 1
+        memory.insertData("nbSoundsHeard", nbSoundsHeard)
+        self.tts.say(str(nbSoundsHeard))
+
+        #now let's try to deal with sound
+        heardTimeALValue = memory.getTimestamp("nbSoundsHeard") #this returns An ALValue with 3 items: * memoryKey value, * first part of the timestamp (seconds), * second part of the timestamp (microseconds).
+        print("heardTimeALValue", heardTimeALValue)
+        sys.stdout.flush()  #on flush ouais
+        heardTime = heardtimeALValue[1] + heardTimeALValue[2]*0.000001
+        print("heardTime",heardTime)
+        sys.stdout.flush() #on flush ouais
+
+        hearingStartTime = memory.getData("hearingStartTime")
+        
+        if(hearingStartTime == 0):
+            memory.insertData("hearingStartTime", heardTime)
+        else:
+            freq = nbSoundsHeard /(heardTime - hearingStartTime)
+           # print("freq : ", freq)
+           # sys.stdout.flush()#on flush ouais 
+        print()
+        print() #two white lines just for clarity
+            
+
+        
+       # walkmodule.moveInit()
+       # walkmodule.moveTo(0,0.1,1)
+       # walkmodule.setStiffnesses("Body", 1)  #redundnat ?
 
         # Subscribe again to the event
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated",
@@ -99,15 +138,29 @@ def main():
     # The name given to the constructor must be the name of the
     # variable
 
+   
+
+    #test to make him turn on himself when he hears a noise
+    global walkmodule
+    walkmodule = ALProxy("ALMotion", NAO_IP, 9559)
+    walkmodule.setStiffnesses("Body", 1)
+    #motionProxy.wakeUp() useful ?
+
+
+
+    global posturemodule
+    posturemodule = ALProxy("ALRobotPosture", NAO_IP, 9559)
+    posturemodule.goToPosture("StandInit", 0.5) 
+
     #is it being declared here ? if yes I can change the name
     global SoundLocater
     SoundLocater = SoundLocaterModule("SoundLocater")
-
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
+        walkmodule.rest()
         print
         print "Interrupted by user, shutting down"
         myBroker.shutdown()

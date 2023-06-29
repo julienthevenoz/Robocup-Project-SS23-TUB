@@ -33,6 +33,7 @@ class SoundLocaterModule(ALModule):
 
         # Create a proxy to ALTextToSpeech for later use
         self.tts = ALProxy("ALTextToSpeech")
+        self.tts.say("JUlien")
 
         # Subscribe to the FaceDetected event:
         global memory
@@ -100,20 +101,21 @@ def main():
     # The name given to the constructor must be the name of the
     # variable
 
-    #is it being declared here ? if yes I can change the name
-    global SoundLocater
-    SoundLocater = SoundLocaterModule("SoundLocater")
 
     #test to make him turn on himself when he hears a noise
     global walkmodule
-    walkmodule = ALProxy("ALMotion", "10.0.7.100", 9559)
+    walkmodule = ALProxy("ALMotion", NAO_IP, 9559)
     walkmodule.setStiffnesses("Body", 1)
     #motionProxy.wakeUp() useful ?
 
 
     global posturemodule
-    posturemodule = ALProxy("ALRobotPosture", "10.0.7.100", 9559)
-    #postureProxy.goToPosture("StandInit", 0.5) useful ?
+    posturemodule = ALProxy("ALRobotPosture", NAO_IP, 9559)
+    posturemodule.goToPosture("StandInit", 0.5) 
+
+    #is it being declared here ? if yes I can change the name
+    global SoundLocater
+    SoundLocater = SoundLocaterModule("SoundLocater")
     
     try:
         while True:

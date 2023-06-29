@@ -6,6 +6,9 @@
 import sys
 import time
 
+import math
+
+
 from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
@@ -34,6 +37,9 @@ class SoundLocaterModule(ALModule):
         # Create a proxy to ALTextToSpeech for later use
         self.tts = ALProxy("ALTextToSpeech")
 
+        # instantiate navigation
+        self.navigation = ALProxy("ALNavigation")
+
         # Subscribe to the FaceDetected event:
         global memory
         memory = ALProxy("ALMemory")
@@ -51,18 +57,39 @@ class SoundLocaterModule(ALModule):
         """
         # Unsubscribe to the event when talking,
         # to avoid repetitions
+        array_parameters= memory.getData("ALSoundLocalization/SoundLocated")
+
+        azimuth = array_parameters[1][0]
+        # altitude = array_parameters[1][1]
+        
 
         #to unsubscribe we only need eventname and module
         memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated",
                                   "SoundLocater")
-        self.tts.say("Sound detected")
-        print("sound located")
-         
+        
+        self.tts.say("there is a sound and the azimtuh is " + str(azimuth))
+        #walkmodule.moveInit()
+        #walkmodule.moveTo(0,0.1,1)
+        #walkmodule.setStiffnesses("Body", 1)  #redundnat ?
 
         # Subscribe again to the event
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated",
                                 "SoundLocater",
                                 "onSoundLocated")
+
+        move_to_direction(azimuth)
+
+
+    def move_to_direction(azimuth):
+    """ Moves into the direction of an angle """
+
+    x = 0.5 * math.cos(azimuth)
+    y = 0.5 * math.sin(azimuth)
+    self.navigation.navigateTo(x,y)
+
+
+
+
 
 
 def main():
@@ -99,15 +126,27 @@ def main():
     # The name given to the constructor must be the name of the
     # variable
 
+
+    #test to make him turn on himself when he hears a noise
+    global walkmodule
+    walkmodule = ALProxy("ALMotion", NAO_IP, 9559)
+    walkmodule.setStiffnesses("Body", 1)
+    #motionProxy.wakeUp() useful ?
+
+
+    global posturemodule
+    posturemodule = ALProxy("ALRobotPosture", NAO_IP, 9559)
+    posturemodule.goToPosture("StandInit", 0.5) 
+
     #is it being declared here ? if yes I can change the name
     global SoundLocater
     SoundLocater = SoundLocaterModule("SoundLocater")
-
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
+        walkmodule.rest()
         print
         print "Interrupted by user, shutting down"
         myBroker.shutdown()
@@ -117,4 +156,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
