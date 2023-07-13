@@ -42,6 +42,13 @@ class SoundLocaterModule(ALModule):
 
         # intialize other variables
         self.peopleInZone1 = False
+        self.sonarLeftDetected = False
+        self.sonarRightDetected = False
+
+        # subscribe to sonar sensor
+        ALSonarProxy::subscribe
+        self.sonarProxy = ALProxy("ALSonarProxy")
+        sonarProxy.subscribe("SoundLocater")
 
         #to subscribe I need to give : eventname,module that will be
         #called, function that will be called
@@ -54,12 +61,27 @@ class SoundLocaterModule(ALModule):
         memory.subscribeToEvent("EngagementZones/PeopleInZonesUpdated",
                             "SoundLocater",
                             "onPeopleInZonesUpdated")
+        memory.subscribeToEvent("SonarLeftDetected", "SoundLocater", "onSonarLeftDetected")
+        memory.subscribeToEvent("SonarRightDetected", "SoundLocater", "onSonarRightDetected")
+        memory.subscribeToEvent("SonarLeftNothingDetected", "SoundLocater", "onSonarLeftNothingDetected")
+        memory.subscribeToEvent("SonarRightDetected", "SoundLocater", "onSonarRightNothingDetected")
         
         # Intialize distances
         ez.setSecondLimitDistance(zone2_distance)
         ez.setFirstLimitDistance(zone1_distance)
         ez.setLimitAngle(limit_angle)
 
+    def onSonarLeftDetected(self):
+        self.sonarLeftDetected = True
+
+    def onSonarRightDetected(self):
+        self.sonarRightDetected = True
+
+    def onSonarLeftNothingDetected(self):
+        self.sonarLeftDetected = False
+
+    def onSonarRightNothingDetected(self):
+        self.sonarRightDetected = False 
 
     def onPeopleDetected(self):
         print("People Detected")
@@ -94,10 +116,56 @@ class SoundLocaterModule(ALModule):
         
         i = 0
         while not self.peopleInZone1 and i <= 5:
+            if self.sonarLeftDetected or self.sonarRightDetected:
+                obstacleAvoidance(azimuth)
             walkmodule.moveTo(x,y,0)
             i += 1
         if(i < 5):
             self.tts.say("People in Zone 1 Detected. Nice to meet you!")
+
+    def obstacleAvoidance(self, azimuth):
+        
+        maneuvers = {(True, False): obstacleAvoidanceRight(azimuth),
+                     (False, True): obstacleAvoidanceLeft(azimuth),
+                     (True, True): largeObstacleAvoidance(azimuth),
+                     (False, False): None }
+
+        sonars = (sonarLeftDetected, sonarRightDetected)
+        return maneuvers[sonars]
+
+    def obstacleAvoidanceLeft(self, azimuth):
+        """ If theres an obstacle to the, go around it on the left """
+        x = step_size * math.cos(azimuth + (math.pi/4))
+        y = step_size * math.sin(azimuth + (math.pi/4))
+        self.motion.moveTo(x,y)
+
+        x = step_size * math.cos(azimuth - (math.pi/2))
+        y = step_size * math.sin(azimuth - (math.pi/2))
+        self.motion.moveTo(x,y)
+
+    def obstacleAvoidanceRight(self, azimuth):
+        """ If theres an obstacle to the, go around it on the left """
+        x = step_size * math.cos(azimuth - (math.pi/4))
+        y = step_size * math.sin(azimuth - (math.pi/4))
+        self.motion.moveTo(x,y)
+
+        x = step_size * math.cos(azimuth + (math.pi/2))
+        y = step_size * math.sin(azimuth + (math.pi/2))
+        self.motion.moveTo(x,y)
+
+    def largeObstacleAvoidance(self, azimuth):
+        """ If theres an obstacle to the, go around it on the left """
+        x = step_size * math.cos(azimuth - (math.pi/2))
+        y = step_size * math.sin(azimuth - (math.pi/2))
+        self.motion.moveTo(x,y)
+
+        x = step_size * math.cos(azimuth + (math.pi/2))
+        y = step_size * math.sin(azimuth + (math.pi/2))
+        self.motion.moveTo(x,y)
+
+        x = step_size * math.cos(azimuth + (math.pi/2))
+        y = step_size * math.sin(azimuth + (math.pi/2))
+        self.motion.moveTo(x,y)
 
 def main():
     """ Main entry point
