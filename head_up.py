@@ -5,7 +5,7 @@ from naoqi import ALProxy
 import threading
 
 def main(robotIP, PORT=9559):
-    motionProxy = ALProxy("ALMotion", robotIP, PORT)
+    motionProxy = ALProxy("ALMotion", "nao3.local", PORT)
 
     motionProxy.setStiffnesses("Body", 1.0)  #need stifness to power the joints
 
@@ -16,7 +16,7 @@ def main(robotIP, PORT=9559):
     motionProxy.setAngles(names,angles,fractionMaxSpeed) #should be a non-blocking call
 
     #this is a thread to make him look left and right. If it doesn't work just throw it away.
-    left_to_right_thread = threading.Thread(target = left_to_right, daemon = True)
+    left_to_right_thread = threading.Thread(target = left_to_right)
     left_to_right_thread.start()
 
     #let's make him walk forward

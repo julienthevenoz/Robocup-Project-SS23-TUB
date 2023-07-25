@@ -40,7 +40,7 @@ class SoundLocaterModule(ALModule):
         # instantiate navigation
         self.navigation = ALProxy("ALNavigation")
 
-        # Subscribe to the FaceDetected event:
+        # Subscribe to the SoundLocated event:
         global memory
         memory = ALProxy("ALMemory")
         #to subscribe I need to give : eventname,module that will be

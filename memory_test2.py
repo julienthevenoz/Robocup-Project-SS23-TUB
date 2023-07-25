@@ -26,6 +26,13 @@ class SoundLocaterModule(ALModule):
     to facedetection events
 
     """
+    #attributes used for memory
+    self.nbSoundsHeard = 0
+    self.hearingStartTime = 0
+    self.hearingLastTime = 0
+   
+
+    
     def __init__(self, name):
         ALModule.__init__(self, name)
         # No need for IP and port here because
@@ -44,14 +51,10 @@ class SoundLocaterModule(ALModule):
                                 "SoundLocater",
                                 "onSoundLocated")
 
-        #initialing memory variables for frequency
-        memory.insertData("nbSoundsHeard", 0)
-        memory.insertData("hearingStartTime", 0)
-        memory.insertData("hearingLastTime", 0)
+    
+        
 
-    self.nbSoundsHeard = 0
-    self.hearingStartTime = 0
-    self.hearingLastTime = 0
+
 
     #i changed this but is it correct ?
     def onSoundLocated(self, *_args):
@@ -65,30 +68,25 @@ class SoundLocaterModule(ALModule):
         #to unsubscribe we only need eventname and module
         memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated",
                                   "SoundLocater")
-        self.tts.say("Sound detected")
+        
 
         #we heard one more sound
-        nbSoundsHeard = memory.getData("nbSoundsHeard")
-        nbSoundsHeard += 1
-        memory.insertData("nbSoundsHeard", nbSoundsHeard)
-        self.tts.say(str(nbSoundsHeard))
+        self.nbSoundsHeard += 1
+        self.tts.say("Sound detected. ", str(self.nbSoundsHeard))
+        print('nbSoundsHeard : ', self.nbSoundsHeard)
+        
 
-        #now let's try to deal with sound
-        heardTimeALValue = memory.getTimestamp("nbSoundsHeard") #this returns An ALValue with 3 items: * memoryKey value, * first part of the timestamp (seconds), * second part of the timestamp (microseconds).
-        print("heardTimeALValue", heardTimeALValue)
-        sys.stdout.flush()  #on flush ouais
-        heardTime = heardtimeALValue[1] + heardTimeALValue[2]*0.000001
-        print("heardTime",heardTime)
-        sys.stdout.flush() #on flush ouais
-
-        hearingStartTime = memory.getData("hearingStartTime")
+        ######here the code for extracting time
+        soundArray = memory.getData("ALSoundLocalization/SoundLocated")
+        self.hearingLastTime = soundArray[0][0] + soundArray[0][1]*0.000001
+        print('heard at ',self.hearingLastTime)
         
         if(hearingStartTime == 0):
-            memory.insertData("hearingStartTime", heardTime)
+            self.hearingStartTime = self.hearingLastTime
+            print('hearingStartTime : ', self.hearingStartTime)
         else:
-            freq = nbSoundsHeard /(heardTime - hearingStartTime)
-           # print("freq : ", freq)
-           # sys.stdout.flush()#on flush ouais 
+            freq = nbSoundsHeard /(self.hearingLastTime - hearingStartTime)
+            print('frequency : ', freq)
         print()
         print() #two white lines just for clarity
             

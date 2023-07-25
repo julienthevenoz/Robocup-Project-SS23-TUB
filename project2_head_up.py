@@ -15,7 +15,7 @@ from naoqi import ALModule
 
 from optparse import OptionParser
 
-NAO_IP = "10.0.7.113"
+NAO_IP = "nao3.local"
 
 zone1_distance = 2.0
 zone2_distance = 3.0
