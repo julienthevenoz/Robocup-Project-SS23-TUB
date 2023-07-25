@@ -8,7 +8,7 @@ from collections import defaultdict
 	builds the grid in the __init__ method. Some parts of this class are inspired by:
 	https://stackoverflow.com/questions/19472530/representing-graphs-data-structure-in-python
 	The methods bfs, pathTo, hasPathTo are implemented following the AlgoDat Lecture Script
-	by Prof. Benjamin Blankertz and Vera Röhr """
+	by Prof. Benjamin Blankertz and Vera R  """
 class GridGraph(object):
 
 	def __init__(self, size):

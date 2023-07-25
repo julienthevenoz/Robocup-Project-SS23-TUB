@@ -16,7 +16,6 @@ from naoqi import ALModule
 from optparse import OptionParser
 
 from Graphs import GridGraph
-from position import Position
 
 NAO_IP = "nao3.local"
 
@@ -78,13 +77,14 @@ class SoundLocaterModule(ALModule):
         self.awareness.setTrackingMode("Head")
         self.awareness.startAwareness()
 
+        #making nao look up
         name = "HeadPitch"
         angles = -30.0*almath.TO_RAD
         fractionMaxSpeed = 0.1
         #self.motion.setAngles(name,angles,fractionMaxSpeed)
 
         # for obstacle avoidance
-        self.g = GridGraph()
+        self.g = None
         self.actions = []
         self.currPos = None
         self.orientation = "north"
