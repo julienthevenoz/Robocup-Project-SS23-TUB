@@ -16,7 +16,7 @@ from naoqi import ALModule
 from optparse import OptionParser
 
 from Graphs import GridGraph
-
+    
 NAO_IP = "nao3.local"
 
 zone1_distance = 1.5
@@ -84,30 +84,34 @@ class SoundLocaterModule(ALModule):
         #self.motion.setAngles(name,angles,fractionMaxSpeed)
 
         # for obstacle avoidance
-        self.g = None
+        self.Graph = None
         self.actions = []
         self.currPos = None
         self.orientation = "north"
 
     def onSonarLeftDetected(self):
+        print("left detec")
         #if not self.sonarLeftDetected: 
         #self.tts.say("Sonar Left")
         self.sonarLeftDetected = True
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarRightDetected(self):
+        print("right detec")
         #if not self.sonarRightDetected: 
         #self.tts.say("Sonar Right")
         self.sonarRightDetected = True
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarLeftNothingDetected(self):
+        print("no left")
         #if self.sonarLeftDetected: 
         #self.tts.say("Sonar Left Nothing")
         self.sonarLeftDetected = False
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarRightNothingDetected(self):
+        print("no right")
         #if self.sonarRightDetected: 
         #self.tts.say("Sonar Right Nothing")
         self.sonarRightDetected = False 
@@ -149,8 +153,8 @@ class SoundLocaterModule(ALModule):
     def scan(self):
         """ Makes the robot look for humans """
         self.moveHeadAngle(-38.0)
-        time.sleep(3)
-        self.moveHeadAngle(38.0)
+        time.sleep(5)
+        self.moveHeadAngle(30.0)
 
     def move_to_direction(self, azimuth):
         """ Moves into the direction of an angle """
@@ -180,8 +184,6 @@ class SoundLocaterModule(ALModule):
         print(self.actions)
         print(self.prevPeopleInZone1)
 
-        self.moveHeadAngle(30)
-
         while self.actions and not self.prevPeopleInZone1 and i < 50:
             # turn into the next direction
             action = self.actions.pop(0)
@@ -194,7 +196,7 @@ class SoundLocaterModule(ALModule):
                 detection = [True, self.sonarRightDetected, self.sonarLeftDetected]
                 for j in range(2):
                     if detection[j]:
-                        self.g.remove(currPos[0] + rPos[j][0], currPos[0] + rPos[j][1])
+                        self.Graph.remove((currPos[0] + rPos[j][0], currPos[0] + rPos[j][1]))
 
                 # get new path
                 self.Graph.bfs(currPos)
@@ -206,8 +208,8 @@ class SoundLocaterModule(ALModule):
                 self.tts.say("no obstacle detected")
                 self.motion.moveTo(step_size,0,0)
                 # every other move
-                if i % 2 == 0:
-                    self.scan()
+                #if i % 2 == 0:
+                self.scan()
                 currPos = (currPos[0] + rPos[0][0], currPos[1] + rPos[0][1])
             i += 1
 
