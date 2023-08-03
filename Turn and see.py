@@ -6,6 +6,7 @@
 import sys
 import time
 import almath
+import threading
 
 from naoqi import ALProxy
 from naoqi import ALBroker
@@ -13,7 +14,7 @@ from naoqi import ALModule
 
 from optparse import OptionParser
 
-NAO_IP = "nao3.local"
+NAO_IP = "nao1.local"
 
 
 # Global variable to store the HumanGreeter module instance
@@ -46,6 +47,26 @@ class HumanGreeterModule(ALModule):
         self.motion = ALProxy("ALMotion")
         self.turning = True
 
+        self.stop_turn = False
+
+        
+    def turn_on_yourself(self):
+        ''' this makes the robot turn search for humans
+        by turning on himself'''
+        self.motion.moveToward(0,0,0.1)  #turn
+        while True:
+            if self.stop_turn:
+                self.motion.moveToward(0,0,0) #stop turning
+                print("stop turn flag raised")
+                
+
+    def start_turning(self):
+        '''this creates and starts a thread of the
+        turn_on_yourself method'''
+        self.turn_thread = threading.Thread(target = self.turn_on_yourself)
+        self.turn_thread.start()
+        
+
     def onFaceDetected(self, *_args):
         """ This will be called each time a face is
         detected.
@@ -54,6 +75,9 @@ class HumanGreeterModule(ALModule):
         # Unsubscribe to the event when talking,
         # to avoid repetitions
         #alpha, beta, camera_pose = 0
+        self.stop_turn = True   #stop flag is true
+        self.turn_thread.join() #making the thread update itself
+        
         self.turning = False
         print("1")
         val = memory.getData("FaceDetected")
@@ -121,13 +145,18 @@ def main():
     walkmodule.setStiffnesses("Body", 1)
     walkmodule.setStiffnesses("Head", 1)
     name = "HeadPitch"
-    angles = 30*almath.TO_RAD
+    angles = -30*almath.TO_RAD
     fractionMaxSpeed = 0.1
-    walkmodule.setAngles(name,-angles,fractionMaxSpeed)
+    walkmodule.setAngles(name,angles,fractionMaxSpeed)
     global posturemodule
     posturemodule = ALProxy("ALRobotPosture", NAO_IP, 9559)
     posturemodule.goToPosture("StandInit", 0.5) 
-    #Humangreeter.motion.moveToward(0,0,0.1)
+
+    #start the turning thread
+    #HumanGreeter.start_turning()
+    #sleep(10)
+    #print("stopping after 10 sec")
+    #HumanGreeter.stop_turn = True
 
     try:
         while True:
