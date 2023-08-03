@@ -55,11 +55,9 @@ class HumanGreeterModule(ALModule):
         # to avoid repetitions
         #alpha, beta, camera_pose = 0
         self.turning = False
-        self.tts.say("Detected")
-        memory.unsubscribeToEvent("FaceDetected",
-            "HumanGreeter")
         print("1")
         val = memory.getData("FaceDetected")
+        print(val)
         sleep(1)
         timestamp = val[0]
         print("2")
@@ -70,6 +68,8 @@ class HumanGreeterModule(ALModule):
         camera_pose = val[3]  #camera pose in robot frame
         print(camera_pose)
         print("3")
+        memory.unsubscribeToEvent("FaceDetected", "HumanGreeter")
+        self.tts.say("Detected")
         
         sleep(2)
         # Subscribe again to the event
