@@ -92,28 +92,20 @@ class SoundLocaterModule(ALModule):
         self.orientation = "north"
 
     def onSonarLeftDetected(self):
-        #if not self.sonarLeftDetected: 
-        #self.tts.say("Sonar Left")
         self.sonarLeftDetected = True
-        self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
+        self.obstacleDetected = True
 
     def onSonarRightDetected(self):
-        #if not self.sonarRightDetected: 
-        #self.tts.say("Sonar Right")
         self.sonarRightDetected = True
-        self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
+        self.obstacleDetected = True
 
     def onSonarLeftNothingDetected(self):
-        #if self.sonarLeftDetected: 
-        #self.tts.say("Sonar Left Nothing")
         self.sonarLeftDetected = False
-        self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
+        self.obstacleDetected = self.sonarRightDetected
 
     def onSonarRightNothingDetected(self):
-        #if self.sonarRightDetected: 
-        #self.tts.say("Sonar Right Nothing")
         self.sonarRightDetected = False 
-        self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
+        self.obstacleDetected = self.sonarRightDetected
 
     def onPeopleDetected(self):
         print("People Detected")
@@ -137,18 +129,6 @@ class SoundLocaterModule(ALModule):
         if numPeopleInZone1 > 0:
             self.prevPeopleInZone1 = True
 
-    def onSoundLocated(self, *_args):
-        """ Localize the sound with azimuth and make robot go into direction """
-
-        
-        array_parameters = self.self.memory.getData("ALSoundLocalization/SoundLocated")
-
-        azimuth = array_parameters[1][0]
-        altitude = array_parameters[1][1]
-                
-        self.tts.say("there is a sound and the azimtuh is!" + "%.2f" % azimuth)
-        self.move_to_direction(azimuth)
-
     def moveHeadAngle(self, angle):
         name = "HeadPitch"
         angles = angle*almath.TO_RAD
@@ -163,9 +143,42 @@ class SoundLocaterModule(ALModule):
 
     def scan(self):
         """ Makes the robot look for humans """
+        
+        scanPos = [0, 50.0, -50.0]
         self.moveHeadAngle(-38.0)
-        time.sleep(5)
+
+        for pos in scanPos:
+            self.yaw(pos)
+            time.sleep(1.5)
+            if self.peopleInZone1to3:
+                return
+                
         self.moveHeadAngle(0)
+        self.yaw(0)
+
+
+    def moveForward(self):
+        """ Makes the robot move forward """
+
+        # stop awareness, so robot doesnt move head while moving
+        self.awareness.stopAwareness()
+        # save position of yaw and pitch
+        Yaw = self.memory.getData("Device/SubDeviceList/HeadYaw/Position/Actuator/Value")
+        Pitch = self.memory.getData("Device/SubDeviceList/HeadPitch/Position/Actuator/Value")
+        # make nao look in front so he does not stumble
+        self.moveHeadAngle(0)
+        self.yaw(0)
+        time.sleep(1)
+        # actually move
+        self.motion.moveTo(step_size,0,0, [["MaxStepX", 0.06], ["MaxStepFrequency", 0.5]])
+        # move joints back into previous position
+        self.moveHeadAngle(Pitch)
+        self.yaw(Yaw)
+        # restart awareness
+        self.awareness.startAwareness()
+
+
+
 
     def move_to_direction(self, azimuth):
         """ Moves into the direction of an angle """
@@ -180,11 +193,6 @@ class SoundLocaterModule(ALModule):
                                 "east": (1, 0),
                                 "south": (0, 1),
                                 "west": (-1,0)}
-        #relativePositions = {   "north": (0, -1)}, #, (1, -1), (-1, -1)],
-                              #  "east": (1, 0), # (1, 1), (1, -1)],
-                               # "south": [(0, 1), #, (1,1), (-1,1)],
-                                #"west": (-1,0)} # (-1,1),(-1,-1)]}
-
 
         self.motion.moveTo(0,0,azimuth)
         self.Graph = GridGraph((15,15))
@@ -197,10 +205,8 @@ class SoundLocaterModule(ALModule):
         i = 0
         steps = 15
         time.sleep(3)
-        print(self.actions)
-        print(self.prevPeopleInZone1)
 
-        while self.actions and not self.prevPeopleInZone1 and i < 15:
+        while self.actions and not self.prevPeopleInZone1 and i < 15 and self.Graph.hasPathTo(goal):
             # turn into the next direction
             action = self.actions.pop(0)
 
@@ -209,18 +215,14 @@ class SoundLocaterModule(ALModule):
             self.yaw(0)
 
             self.motion.moveTo(0,0,anglesTurn[action] - anglesTurn[self.orientation])
-            
-            print(0,0,anglesTurn[action] - anglesTurn[self.orientation])
 
             self.orientation = action
             rPos = relativePositions[action]
             if self.obstacleDetected:
                 # remove obstacle from graph
                 self.tts.say("obstacle")
+
                 detection = [True, self.sonarRightDetected, self.sonarLeftDetected]
-                #for j in range(3):
-                #    if detection[j]:
-                print(rPos)
                 self.Graph.remove((currPos[0] + rPos[0], currPos[1] + rPos[1]))
 
                 # get new path
@@ -231,35 +233,18 @@ class SoundLocaterModule(ALModule):
             else:
                 # make move and update position
                 self.tts.say("no obstacle detected")
-                self.awareness.stopAwareness()
-                Yaw = self.memory.getData("Device/SubDeviceList/HeadYaw/Position/Actuator/Value")
-                Pitch = self.memory.getData("Device/SubDeviceList/HeadPitch/Position/Actuator/Value")
-                self.moveHeadAngle(0)
-                self.yaw(0)
-                time.sleep(2.5)
-                self.motion.moveTo(step_size,0,0, [["MaxStepX", 0.06], ["MaxStepFrequency", 0.5]])
-                self.moveHeadAngle(Pitch)
-                self.yaw(Yaw)
-                self.awareness.startAwareness()
-
-                # every other move
-                #if i % 2 == 0:
+                self.moveForward()
+                # if noone is currently detected, look for people
                 if not self.peopleInZone1to3:
                     self.scan()
 
                 currPos = (currPos[0] + rPos[0], currPos[1] + rPos[1])
             i += 1
 
-        print(self.prevPeopleInZone1)
 
         if self.prevPeopleInZone1:
             print("hello there")
             self.tts.say("hello there")   
-        if self.actions == None:
-                self.tts.say("no path!")
-                return
-        self.Graph.setPosition(currPos)         
-        print(self.Graph)
 
     def lookfor(self):
         self.moveHeadAngle(-30.0)
