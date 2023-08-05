@@ -19,11 +19,11 @@ from Graphs import GridGraph
     
 NAO_IP = "nao3.local"
 
-zone1_distance = 1.5
+zone1_distance = 1.0
 zone2_distance = 3.0
 limit_angle = 90.0
 
-step_size = 0.25
+step_size = 0.35
 
 class SoundLocaterModule(ALModule):   
     """ This class implements a robot, that goes into 
@@ -44,9 +44,11 @@ class SoundLocaterModule(ALModule):
         # intialize other variables
         self.peopleInZone1 = False
         self.sonarLeftDetected = False
+        self.peopleInZone1to3 = False
         self.sonarRightDetected = False
         self.obstacleDetected = False
         self.prevPeopleInZone1 = False
+        self.prevPeopleInZone1to3 = False
 
         # subscribe to sonar sensor
         self.sonarProxy = ALProxy("ALSonar", NAO_IP, 9559)
@@ -73,7 +75,7 @@ class SoundLocaterModule(ALModule):
         self.ez.setFirstLimitDistance(zone1_distance)
         self.ez.setLimitAngle(limit_angle)
 
-        self.awareness.setEngagementMode("SemiEngaged")
+        self.awareness.setEngagementMode("FullyEngaged")
         self.awareness.setTrackingMode("Head")
         self.awareness.startAwareness()
 
@@ -90,28 +92,24 @@ class SoundLocaterModule(ALModule):
         self.orientation = "north"
 
     def onSonarLeftDetected(self):
-        print("left detec")
         #if not self.sonarLeftDetected: 
         #self.tts.say("Sonar Left")
         self.sonarLeftDetected = True
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarRightDetected(self):
-        print("right detec")
         #if not self.sonarRightDetected: 
         #self.tts.say("Sonar Right")
         self.sonarRightDetected = True
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarLeftNothingDetected(self):
-        print("no left")
         #if self.sonarLeftDetected: 
         #self.tts.say("Sonar Left Nothing")
         self.sonarLeftDetected = False
         self.obstacleDetected = self.sonarLeftDetected or self.sonarRightDetected
 
     def onSonarRightNothingDetected(self):
-        print("no right")
         #if self.sonarRightDetected: 
         #self.tts.say("Sonar Right Nothing")
         self.sonarRightDetected = False 
@@ -128,6 +126,13 @@ class SoundLocaterModule(ALModule):
         print("Zone 3: " + str(self.memory.getData("EngagementZones/PeopleInZone3")))
 
         numPeopleInZone1 = len(self.memory.getData("EngagementZones/PeopleInZone1"))
+        numPeopleInZone2 = len(self.memory.getData("EngagementZones/PeopleInZone2"))
+        numPeopleInZone3 = len(self.memory.getData("EngagementZones/PeopleInZone3"))
+
+        peopleInZone1to3 = numPeopleInZone1 + numPeopleInZone2 + numPeopleInZone3 > 0
+        if peopleInZone1to3:
+            self.prevPeopleInZone1to3 = True
+
         peopleInZone1 = False if numPeopleInZone1 == 0 else True
         if numPeopleInZone1 > 0:
             self.prevPeopleInZone1 = True
@@ -150,11 +155,17 @@ class SoundLocaterModule(ALModule):
         fractionMaxSpeed = 0.1
         self.motion.setAngles(name,angles,fractionMaxSpeed)
 
+    def yaw(self, angle):
+        name = "HeadYaw"
+        angles = angle*almath.TO_RAD
+        fractionMaxSpeed = 0.1
+        self.motion.setAngles(name,angles,fractionMaxSpeed)
+
     def scan(self):
         """ Makes the robot look for humans """
         self.moveHeadAngle(-38.0)
         time.sleep(5)
-        self.moveHeadAngle(30.0)
+        self.moveHeadAngle(0)
 
     def move_to_direction(self, azimuth):
         """ Moves into the direction of an angle """
@@ -165,10 +176,15 @@ class SoundLocaterModule(ALModule):
                         "west": math.pi/2
         }
 
-        relativePositions = {   "north": [(0, -1), (1, -1), (-1, -1)],
-                                "east": [(1, 0), (1, 1), (1, -1)],
-                                "south": [(0, 1), (1,1), (-1,1)],
-                                "west": [(-1,0), (-1,1),(-1,-1)]}
+        relativePositions = {   "north": (0, -1),
+                                "east": (1, 0),
+                                "south": (0, 1),
+                                "west": (-1,0)}
+        #relativePositions = {   "north": (0, -1)}, #, (1, -1), (-1, -1)],
+                              #  "east": (1, 0), # (1, 1), (1, -1)],
+                               # "south": [(0, 1), #, (1,1), (-1,1)],
+                                #"west": (-1,0)} # (-1,1),(-1,-1)]}
+
 
         self.motion.moveTo(0,0,azimuth)
         self.Graph = GridGraph((15,15))
@@ -184,19 +200,28 @@ class SoundLocaterModule(ALModule):
         print(self.actions)
         print(self.prevPeopleInZone1)
 
-        while self.actions and not self.prevPeopleInZone1 and i < 50:
+        while self.actions and not self.prevPeopleInZone1 and i < 15:
             # turn into the next direction
             action = self.actions.pop(0)
+
+            Yaw = self.memory.getData("Device/SubDeviceList/HeadYaw/Position/Actuator/Value")
+            self.motion.moveTo(0,0,Yaw)
+            self.yaw(0)
+
             self.motion.moveTo(0,0,anglesTurn[action] - anglesTurn[self.orientation])
+            
+            print(0,0,anglesTurn[action] - anglesTurn[self.orientation])
+
             self.orientation = action
             rPos = relativePositions[action]
             if self.obstacleDetected:
                 # remove obstacle from graph
                 self.tts.say("obstacle")
                 detection = [True, self.sonarRightDetected, self.sonarLeftDetected]
-                for j in range(2):
-                    if detection[j]:
-                        self.Graph.remove((currPos[0] + rPos[j][0], currPos[0] + rPos[j][1]))
+                #for j in range(3):
+                #    if detection[j]:
+                print(rPos)
+                self.Graph.remove((currPos[0] + rPos[0], currPos[1] + rPos[1]))
 
                 # get new path
                 self.Graph.bfs(currPos)
@@ -206,11 +231,23 @@ class SoundLocaterModule(ALModule):
             else:
                 # make move and update position
                 self.tts.say("no obstacle detected")
-                self.motion.moveTo(step_size,0,0)
+                self.awareness.stopAwareness()
+                Yaw = self.memory.getData("Device/SubDeviceList/HeadYaw/Position/Actuator/Value")
+                Pitch = self.memory.getData("Device/SubDeviceList/HeadPitch/Position/Actuator/Value")
+                self.moveHeadAngle(0)
+                self.yaw(0)
+                time.sleep(2.5)
+                self.motion.moveTo(step_size,0,0, [["MaxStepX", 0.06], ["MaxStepFrequency", 0.5]])
+                self.moveHeadAngle(Pitch)
+                self.yaw(Yaw)
+                self.awareness.startAwareness()
+
                 # every other move
                 #if i % 2 == 0:
-                self.scan()
-                currPos = (currPos[0] + rPos[0][0], currPos[1] + rPos[0][1])
+                if not self.peopleInZone1to3:
+                    self.scan()
+
+                currPos = (currPos[0] + rPos[0], currPos[1] + rPos[1])
             i += 1
 
         print(self.prevPeopleInZone1)
@@ -223,6 +260,20 @@ class SoundLocaterModule(ALModule):
                 return
         self.Graph.setPosition(currPos)         
         print(self.Graph)
+
+    def lookfor(self):
+        self.moveHeadAngle(-30.0)
+        self.yaw(0)
+        for i in range(15):
+            self.moveHeadAngle(-38.0)
+            time.sleep(5)
+            print(self.prevPeopleInZone1to3)
+            if self.prevPeopleInZone1to3:
+                print("stop turning")
+                break
+            self.moveHeadAngle(0)
+            self.motion.moveTo(0,0, math.pi/5)
+        self.move_to_direction(0)
 
 
 def main():
@@ -254,7 +305,6 @@ def main():
        pip,         # parent broker IP
        pport)       # parent broker port
 
-
     global posturemodule
     posturemodule = ALProxy("ALRobotPosture", NAO_IP, 9559)
     posturemodule.goToPosture("StandInit", 0.8) 
@@ -264,6 +314,7 @@ def main():
     SoundLocater = SoundLocaterModule("SoundLocater")
 
     SoundLocater.move_to_direction(0)
+
     try:
         while True:
             time.sleep(1)
